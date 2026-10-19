@@ -1,80 +1,130 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
+import api from "../../services/api";
 
 function Cart() {
   const navigate = useNavigate();
 
-  const [cart, setCart] = React.useState(() => {
+  const [cart, setCart] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState("");
+
+  // =========================
+  // LOAD CART FROM LARAVEL
+  // =========================
+  const loadCart = async () => {
     try {
-      return JSON.parse(
-        localStorage.getItem("cart") || "[]"
+      setLoading(true);
+      setError("");
+
+      const response = await api.get("/cart");
+
+      setCart(response.data.items || []);
+    } catch (err) {
+      console.error("Cart loading error:", err);
+
+      if (err.response?.status === 401) {
+        localStorage.removeItem("customer_token");
+        localStorage.removeItem("customer_user");
+
+        navigate("/login");
+        return;
+      }
+
+      setError(
+        err.response?.data?.message ||
+          "Failed to load cart."
       );
-    } catch {
-      return [];
+    } finally {
+      setLoading(false);
     }
-  });
-
-  const updateCart = (updatedCart) => {
-    setCart(updatedCart);
-    localStorage.setItem(
-      "cart",
-      JSON.stringify(updatedCart)
-    );
   };
 
-  const increaseQuantity = (index) => {
-    const updated = [...cart];
+  React.useEffect(() => {
+    loadCart();
+  }, []);
 
-    updated[index] = {
-      ...updated[index],
-      quantity: (updated[index].quantity || 1) + 1,
-    };
-
-    updateCart(updated);
-  };
-
-  const decreaseQuantity = (index) => {
-    const updated = [...cart];
-
-    const quantity = updated[index].quantity || 1;
-
-    if (quantity <= 1) {
-      updated.splice(index, 1);
-    } else {
-      updated[index] = {
-        ...updated[index],
-        quantity: quantity - 1,
-      };
+  // =========================
+  // UPDATE QUANTITY
+  // =========================
+  const updateQuantity = async (item, newQuantity) => {
+    if (newQuantity < 1) {
+      return;
     }
 
-    updateCart(updated);
+    try {
+      await api.put(`/cart/${item.id}`, {
+        quantity: newQuantity,
+      });
+
+      await loadCart();
+    } catch (err) {
+      console.error("Quantity update error:", err);
+
+      alert(
+        err.response?.data?.message ||
+          "Failed to update quantity."
+      );
+    }
   };
 
-  const removeItem = (index) => {
-    const updated = [...cart];
+  // =========================
+  // REMOVE ITEM
+  // =========================
+  const removeItem = async (itemId) => {
+    try {
+      await api.delete(`/cart/${itemId}`);
 
-    updated.splice(index, 1);
+      await loadCart();
+    } catch (err) {
+      console.error("Remove cart item error:", err);
 
-    updateCart(updated);
+      alert(
+        err.response?.data?.message ||
+          "Failed to remove item."
+      );
+    }
   };
 
-  const clearCart = () => {
-    setCart([]);
-    localStorage.removeItem("cart");
+  // =========================
+  // CLEAR CART
+  // =========================
+  const clearCart = async () => {
+    if (!window.confirm("Are you sure you want to clear your cart?")) {
+      return;
+    }
+
+    try {
+      await api.delete("/cart");
+
+      setCart([]);
+    } catch (err) {
+      console.error("Clear cart error:", err);
+
+      alert(
+        err.response?.data?.message ||
+          "Failed to clear cart."
+      );
+    }
   };
 
+  // =========================
+  // PRICE
+  // =========================
   const getPrice = (item) => {
-    return Number(
-      item.price ||
-      item.amount ||
-      0
-    );
+    return Number(item.food?.price || 0);
   };
 
+  // =========================
+  // QUANTITY
+  // =========================
   const getQuantity = (item) => {
     return Number(item.quantity || 1);
   };
 
+  // =========================
+  // SUBTOTAL
+  // =========================
   const subtotal = cart.reduce(
     (total, item) =>
       total +
@@ -89,12 +139,82 @@ function Cart() {
   const total =
     subtotal + deliveryFee;
 
+  // =========================
+  // LOADING
+  // =========================
+  if (loading) {
+    return (
+      <div
+        style={{
+          background: "#fffaf2",
+          minHeight: "80vh",
+          padding: "100px 0",
+        }}
+      >
+        <div className="container text-center">
+          <div
+            className="spinner-border text-warning"
+            style={{
+              width: "3rem",
+              height: "3rem",
+            }}
+          ></div>
+
+          <h5 className="mt-3">
+            Loading your cart...
+          </h5>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================
+  // ERROR
+  // =========================
+  if (error) {
+    return (
+      <div
+        style={{
+          background: "#fffaf2",
+          minHeight: "80vh",
+          padding: "80px 0",
+        }}
+      >
+        <div className="container text-center">
+          <div
+            style={{
+              fontSize: "70px",
+            }}
+          >
+            ⚠️
+          </div>
+
+          <h3 className="fw-bold mt-3">
+            Unable to load cart
+          </h3>
+
+          <p className="text-danger">
+            {error}
+          </p>
+
+          <button
+            onClick={loadCart}
+            className="btn btn-warning px-4"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================
+  // EMPTY CART
+  // =========================
   if (cart.length === 0) {
     return (
       <div className="cart-page">
-
         <div className="container py-5">
-
           <div className="text-center py-5">
 
             <div
@@ -122,13 +242,14 @@ function Cart() {
             </Link>
 
           </div>
-
         </div>
-
       </div>
     );
   }
 
+  // =========================
+  // CART PAGE
+  // =========================
   return (
     <div
       style={{
@@ -137,7 +258,6 @@ function Cart() {
         padding: "50px 0",
       }}
     >
-
       <div className="container">
 
         {/* HEADER */}
@@ -175,190 +295,181 @@ function Cart() {
 
         </div>
 
-
         <div className="row g-4">
 
           {/* ITEMS */}
 
           <div className="col-lg-8">
 
-            {cart.map((item, index) => (
+            {cart.map((item) => {
 
-              <div
-                key={index}
-                className="card border-0 shadow-sm mb-3"
-                style={{
-                  borderRadius: "18px",
-                }}
-              >
+              const food = item.food;
 
-                <div className="card-body p-4">
+              return (
+                <div
+                  key={item.id}
+                  className="card border-0 shadow-sm mb-3"
+                  style={{
+                    borderRadius: "18px",
+                  }}
+                >
+                  <div className="card-body p-4">
 
-                  <div className="row align-items-center">
+                    <div className="row align-items-center">
 
-                    {/* IMAGE */}
+                      {/* IMAGE */}
 
-                    <div className="col-md-2">
+                      <div className="col-md-2">
 
-                      {item.image ? (
+                        {food?.image ? (
 
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          style={{
-                            width: "90px",
-                            height: "90px",
-                            objectFit: "cover",
-                            borderRadius: "15px",
-                          }}
-                        />
+                          <img
+                            src={food.image}
+                            alt={food.name}
+                            style={{
+                              width: "90px",
+                              height: "90px",
+                              objectFit: "cover",
+                              borderRadius: "15px",
+                            }}
+                          />
 
-                      ) : (
+                        ) : (
 
-                        <div
-                          style={{
-                            width: "90px",
-                            height: "90px",
-                            borderRadius: "15px",
-                            background:
-                              "#fff0d4",
-                            display: "flex",
-                            alignItems:
-                              "center",
-                            justifyContent:
-                              "center",
-                            fontSize: "45px",
-                          }}
-                        >
-                          🍔
-                        </div>
+                          <div
+                            style={{
+                              width: "90px",
+                              height: "90px",
+                              borderRadius: "15px",
+                              background: "#fff0d4",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "45px",
+                            }}
+                          >
+                            🍔
+                          </div>
 
-                      )}
-
-                    </div>
-
-
-                    {/* NAME */}
-
-                    <div className="col-md-4">
-
-                      <h5 className="fw-bold mb-1">
-                        {item.name ||
-                          "Food Item"}
-                      </h5>
-
-                      <small className="text-muted">
-                        {item.restaurant ||
-                          "FoodExpress"}
-                      </small>
-
-                      <div
-                        className="mt-2"
-                        style={{
-                          color: "#ff9f1c",
-                          fontWeight: "700",
-                        }}
-                      >
-                        $
-                        {getPrice(item).toFixed(
-                          2
                         )}
+
                       </div>
 
-                    </div>
+                      {/* NAME */}
 
+                      <div className="col-md-4">
 
-                    {/* QUANTITY */}
+                        <h5 className="fw-bold mb-1">
+                          {food?.name || "Food Item"}
+                        </h5>
 
-                    <div className="col-md-3">
+                        <small className="text-muted">
+                          {food?.restaurant?.name ||
+                            food?.hotel?.name ||
+                            "FoodExpress"}
+                        </small>
 
-                      <div
-                        className="d-flex align-items-center"
-                        style={{
-                          gap: "12px",
-                        }}
-                      >
-
-                        <button
-                          onClick={() =>
-                            decreaseQuantity(
-                              index
-                            )
-                          }
-                          className="btn btn-light border"
+                        <div
+                          className="mt-2"
                           style={{
-                            width: "38px",
-                            height: "38px",
-                            borderRadius:
-                              "10px",
+                            color: "#ff9f1c",
+                            fontWeight: "700",
                           }}
                         >
-                          −
-                        </button>
+                          $
+                          {getPrice(item).toFixed(2)}
+                        </div>
 
-                        <strong>
-                          {getQuantity(item)}
+                      </div>
+
+                      {/* QUANTITY */}
+
+                      <div className="col-md-3">
+
+                        <div
+                          className="d-flex align-items-center"
+                          style={{
+                            gap: "12px",
+                          }}
+                        >
+
+                          <button
+                            onClick={() =>
+                              updateQuantity(
+                                item,
+                                getQuantity(item) - 1
+                              )
+                            }
+                            className="btn btn-light border"
+                            style={{
+                              width: "38px",
+                              height: "38px",
+                              borderRadius: "10px",
+                            }}
+                          >
+                            −
+                          </button>
+
+                          <strong>
+                            {getQuantity(item)}
+                          </strong>
+
+                          <button
+                            onClick={() =>
+                              updateQuantity(
+                                item,
+                                getQuantity(item) + 1
+                              )
+                            }
+                            className="btn btn-warning"
+                            style={{
+                              width: "38px",
+                              height: "38px",
+                              borderRadius: "10px",
+                            }}
+                          >
+                            +
+                          </button>
+
+                        </div>
+
+                      </div>
+
+                      {/* TOTAL */}
+
+                      <div className="col-md-2 text-end">
+
+                        <strong
+                          style={{
+                            fontSize: "18px",
+                          }}
+                        >
+                          $
+                          {(
+                            getPrice(item) *
+                            getQuantity(item)
+                          ).toFixed(2)}
                         </strong>
 
                         <button
                           onClick={() =>
-                            increaseQuantity(
-                              index
-                            )
+                            removeItem(item.id)
                           }
-                          className="btn btn-warning"
-                          style={{
-                            width: "38px",
-                            height: "38px",
-                            borderRadius:
-                              "10px",
-                          }}
+                          className="btn btn-sm btn-link text-danger d-block ms-auto"
                         >
-                          +
+                          Remove
                         </button>
 
                       </div>
 
                     </div>
 
-
-                    {/* TOTAL */}
-
-                    <div className="col-md-2 text-end">
-
-                      <strong
-                        style={{
-                          fontSize: "18px",
-                        }}
-                      >
-                        $
-                        {(
-                          getPrice(item) *
-                          getQuantity(item)
-                        ).toFixed(2)}
-                      </strong>
-
-                      <button
-                        onClick={() =>
-                          removeItem(index)
-                        }
-                        className="btn btn-sm btn-link text-danger d-block ms-auto"
-                      >
-                        Remove
-                      </button>
-
-                    </div>
-
                   </div>
-
                 </div>
-
-              </div>
-
-            ))}
+              );
+            })}
 
           </div>
-
 
           {/* SUMMARY */}
 
@@ -380,6 +491,7 @@ function Cart() {
                 </h4>
 
                 <div className="d-flex justify-content-between mb-3">
+
                   <span className="text-muted">
                     Subtotal
                   </span>
@@ -387,9 +499,11 @@ function Cart() {
                   <strong>
                     ${subtotal.toFixed(2)}
                   </strong>
+
                 </div>
 
                 <div className="d-flex justify-content-between mb-3">
+
                   <span className="text-muted">
                     Delivery Fee
                   </span>
@@ -397,6 +511,7 @@ function Cart() {
                   <strong>
                     ${deliveryFee.toFixed(2)}
                   </strong>
+
                 </div>
 
                 <hr />
@@ -422,7 +537,6 @@ function Cart() {
 
                 </div>
 
-
                 <button
                   onClick={() =>
                     navigate("/checkout")
@@ -434,7 +548,6 @@ function Cart() {
                 >
                   Proceed to Checkout →
                 </button>
-
 
                 <Link
                   to="/restaurants"
@@ -453,9 +566,7 @@ function Cart() {
           </div>
 
         </div>
-
       </div>
-
     </div>
   );
 }

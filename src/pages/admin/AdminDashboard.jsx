@@ -1,227 +1,285 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 function AdminDashboard() {
+  const navigate = useNavigate();
+
+  const [stats, setStats] = useState({
+    customers: 0,
+    orders: 0,
+    restaurants: 0,
+    hotels: 0,
+    revenue: 0,
+  });
+
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  const fetchDashboard = async () => {
+    try {
+      const token = localStorage.getItem("admin_token");
+
+      const response = await axios.get(
+        "http://127.0.0.1:8000/api/admin/dashboard",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      setStats(
+        response.data.stats || {
+          customers: 0,
+          orders: 0,
+          restaurants: 0,
+          hotels: 0,
+          revenue: 0,
+        }
+      );
+
+      setOrders(response.data.recent_orders || []);
+    } catch (error) {
+      console.error(
+        "Dashboard error:",
+        error.response?.data || error.message
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const cards = [
     {
       icon: "👥",
       title: "Customers",
-      value: "120",
-      change: "+12% this month",
+      value: stats.customers,
+      change: "Registered customers",
     },
     {
       icon: "🛒",
       title: "Orders",
-      value: "85",
-      change: "+8% this week",
+      value: stats.orders,
+      change: "Total orders",
     },
     {
       icon: "🍽️",
       title: "Restaurants",
-      value: "15",
-      change: "+2 new",
+      value: stats.restaurants,
+      change: "Available restaurants",
+    },
+    {
+      icon: "🏨",
+      title: "Hotels",
+      value: stats.hotels,
+      change: "Available hotels",
     },
     {
       icon: "💰",
       title: "Revenue",
-      value: "$2,450",
-      change: "+15% this month",
+      value: `Rs. ${Number(stats.revenue || 0).toLocaleString()}`,
+      change: "Total revenue",
     },
   ];
 
-  const orders = [
-    {
-      id: "#FE001",
-      customer: "Kasun Perera",
-      restaurant: "KFC",
-      amount: "$24.50",
-      status: "Completed",
-    },
-    {
-      id: "#FE002",
-      customer: "Nimali Silva",
-      restaurant: "Pizza Hut",
-      amount: "$31.20",
-      status: "Pending",
-    },
-    {
-      id: "#FE003",
-      customer: "Amal Fernando",
-      restaurant: "Burger House",
-      amount: "$18.90",
-      status: "Completed",
-    },
-    {
-      id: "#FE004",
-      customer: "Tharushi",
-      restaurant: "KFC",
-      amount: "$12.50",
-      status: "Pending",
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="admin-loading">
+        Loading dashboard...
+      </div>
+    );
+  }
 
   return (
-    <div>
+    <div className="dashboard-page">
 
-      <div className="admin-page-title">
-        <h1>Dashboard Overview</h1>
-        <p>
-          Monitor your FoodExpress business from here.
-        </p>
+      {/* PAGE HEADER */}
+      <div className="admin-page-title dashboard-page-header">
+        <div>
+          <h1>Dashboard Overview</h1>
+
+          <p>
+            Monitor your FoodExpress business from here.
+          </p>
+        </div>
       </div>
 
-
-      {/* CARDS */}
-
+      {/* STAT CARDS */}
       <div className="dashboard-cards">
 
         {cards.map((card) => (
-
           <div
             className="dashboard-card"
             key={card.title}
           >
+            <div className="dashboard-card-content">
 
-            <div>
+              <h6>{card.title}</h6>
 
-              <h6>
-                {card.title}
-              </h6>
+              <h2>{card.value}</h2>
 
-              <h2>
-                {card.value}
-              </h2>
-
-              <p>
-                {card.change}
-              </p>
+              <p>{card.change}</p>
 
             </div>
 
             <div className="dashboard-card-icon">
               {card.icon}
             </div>
-
           </div>
-
         ))}
 
       </div>
 
-
-      {/* CONTENT */}
-
+      {/* DASHBOARD CONTENT */}
       <div className="dashboard-grid">
 
-        {/* ORDERS */}
-
-        <div className="admin-panel">
+        {/* RECENT ORDERS */}
+        <div className="admin-panel dashboard-orders-panel">
 
           <div className="admin-panel-header">
 
-            <h3>
-              Recent Orders
-            </h3>
+            <h3>Recent Orders</h3>
 
-            <a href="/admin/orders">
+            <button
+              type="button"
+              className="admin-link-button"
+              onClick={() => navigate("/admin/orders")}
+            >
               View All →
-            </a>
+            </button>
 
           </div>
 
-          <table className="admin-table">
+          {orders.length === 0 ? (
+            <div className="empty-admin-data">
+              No orders found.
+            </div>
+          ) : (
+            <div className="dashboard-table-wrapper">
 
-            <thead>
+              <table className="admin-table">
 
-              <tr>
-                <th>ORDER</th>
-                <th>CUSTOMER</th>
-                <th>RESTAURANT</th>
-                <th>AMOUNT</th>
-                <th>STATUS</th>
-              </tr>
+                <thead>
+                  <tr>
+                    <th>ORDER</th>
+                    <th>CUSTOMER</th>
+                    <th>RESTAURANT</th>
+                    <th>AMOUNT</th>
+                    <th>STATUS</th>
+                  </tr>
+                </thead>
 
-            </thead>
+                <tbody>
 
-            <tbody>
+                  {orders.map((order) => (
+                    <tr key={order.id}>
 
-              {orders.map((order) => (
+                      <td>
+                        <strong>
+                          #{order.id}
+                        </strong>
+                      </td>
 
-                <tr key={order.id}>
+                      <td>
+                        {order.user?.name ||
+                          order.customer_name ||
+                          "Unknown"}
+                      </td>
 
-                  <td>
-                    <strong>
-                      {order.id}
-                    </strong>
-                  </td>
+                      <td>
+                        {order.restaurant?.name || "-"}
+                      </td>
 
-                  <td>
-                    {order.customer}
-                  </td>
+                      <td>
+                        <strong>
+                          Rs.{" "}
+                          {Number(
+                            order.total_amount || 0
+                          ).toLocaleString()}
+                        </strong>
+                      </td>
 
-                  <td>
-                    {order.restaurant}
-                  </td>
+                      <td>
+                        <span
+                          className={`status ${
+                            order.status?.toLowerCase() ===
+                            "completed"
+                              ? "completed"
+                              : order.status?.toLowerCase() ===
+                                "pending"
+                              ? "pending"
+                              : "processing"
+                          }`}
+                        >
+                          {order.status || "Pending"}
+                        </span>
+                      </td>
 
-                  <td>
-                    <strong>
-                      {order.amount}
-                    </strong>
-                  </td>
+                    </tr>
+                  ))}
 
-                  <td>
+                </tbody>
 
-                    <span
-                      className={`status ${
-                        order.status === "Completed"
-                          ? "completed"
-                          : "pending"
-                      }`}
-                    >
-                      {order.status}
-                    </span>
+              </table>
 
-                  </td>
-
-                </tr>
-
-              ))}
-
-            </tbody>
-
-          </table>
+            </div>
+          )}
 
         </div>
 
-
         {/* QUICK ACTIONS */}
-
-        <div className="admin-panel">
+        <div className="admin-panel dashboard-quick-panel">
 
           <div className="admin-panel-header">
-
-            <h3>
-              Quick Actions
-            </h3>
-
+            <h3>Quick Actions</h3>
           </div>
 
-          <div className="d-grid gap-3">
+          <div className="quick-actions">
 
-            <button className="btn btn-warning p-3">
-              ➕ Add Restaurant
+            <button
+              className="quick-action-btn primary"
+              onClick={() =>
+                navigate("/admin/restaurants")
+              }
+            >
+              <span>➕</span>
+              <span>Add Restaurant</span>
             </button>
 
-            <button className="btn btn-outline-dark p-3">
-              🍔 Add Food
+            <button
+              className="quick-action-btn"
+              onClick={() =>
+                navigate("/admin/foods")
+              }
+            >
+              <span>🍔</span>
+              <span>Manage Foods</span>
             </button>
 
-            <button className="btn btn-outline-dark p-3">
-              🏨 Add Hotel
+            <button
+              className="quick-action-btn"
+              onClick={() =>
+                navigate("/admin/hotels")
+              }
+            >
+              <span>🏨</span>
+              <span>Manage Hotels</span>
             </button>
 
-            <button className="btn btn-outline-dark p-3">
-              📊 View Revenue
+            <button
+              className="quick-action-btn"
+              onClick={() =>
+                navigate("/admin/revenue")
+              }
+            >
+              <span>📊</span>
+              <span>View Revenue</span>
             </button>
 
           </div>

@@ -1,45 +1,18 @@
-
+﻿
 import axios from "axios";
+import { Capacitor } from "@capacitor/core";
+
+const apiBaseURL = Capacitor.isNativePlatform()
+  ? "http://10.0.2.2:8000/api"
+  : "http://127.0.0.1:8000/api";
 
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000/api",
-
+  baseURL: apiBaseURL,
   headers: {
-    Accept: "application/json",
     "Content-Type": "application/json",
+    Accept: "application/json",
   },
+  timeout: 15000,
 });
-
-// Automatically send customer/admin token when available
-api.interceptors.request.use(
-  (config) => {
-    const customerToken =
-      localStorage.getItem("customer_token");
-
-    const adminToken =
-      localStorage.getItem("admin_token");
-
-    // Admin pages use admin token
-    if (window.location.pathname.startsWith("/admin")) {
-      if (adminToken) {
-        config.headers.Authorization =
-          `Bearer ${adminToken}`;
-      }
-    }
-
-    // Customer pages use customer token
-    else {
-      if (customerToken) {
-        config.headers.Authorization =
-          `Bearer ${customerToken}`;
-      }
-    }
-
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 export default api;

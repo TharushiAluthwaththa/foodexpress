@@ -1,34 +1,35 @@
-
-import React from "react";
+﻿import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import api from "../../services/api";
+import axios from "axios";
 
 function Hotels() {
-  const hotels = [
-    {
-      id: 1,
-      name: "Grand Hotel",
-      location: "Colombo",
-      rating: "4.8",
-      delivery: "25-35 min",
-      emoji: "🏨",
-    },
-    {
-      id: 2,
-      name: "Ocean View Hotel",
-      location: "Mount Lavinia",
-      rating: "4.7",
-      delivery: "30-40 min",
-      emoji: "🌊",
-    },
-    {
-      id: 3,
-      name: "City Palace Hotel",
-      location: "Kandy",
-      rating: "4.9",
-      delivery: "25-35 min",
-      emoji: "🏰",
-    },
-  ];
+  const [hotels, setHotels] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadHotels();
+  }, []);
+
+  const loadHotels = async () => {
+    try {
+      const response = await api.get("/hotels");
+
+      console.log("HOTELS API RESPONSE:", response.data);
+      console.log("HOTELS:", response.data.hotels);
+
+      setHotels(response.data.hotels || []);
+    } catch (error) {
+      console.error(
+        "Hotel loading error:",
+        error.response?.data || error.message
+      );
+
+      setHotels([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
@@ -39,10 +40,12 @@ function Hotels() {
       }}
     >
       <div className="container">
+
+        {/* HEADER */}
         <div className="text-center mb-5">
           <small
             style={{
-              color: "#6c5ce7",
+              color: "#ff9f1c",
               fontWeight: "800",
               letterSpacing: "2px",
             }}
@@ -51,76 +54,145 @@ function Hotels() {
           </small>
 
           <h1 className="fw-bold display-5">
-            🏨 Hotels
+            ðŸ¨ Hotels
           </h1>
 
           <p className="text-muted fs-5">
-            Enjoy delicious meals from popular hotels.
+            Discover amazing hotels and order delicious food.
           </p>
         </div>
 
-        <div className="row g-4">
-          {hotels.map((hotel) => (
-            <div
-              className="col-md-6 col-lg-4"
-              key={hotel.id}
-            >
+        {/* LOADING */}
+        {loading && (
+          <div className="text-center py-5">
+            <div className="spinner-border text-warning"></div>
+
+            <p className="text-muted mt-3">
+              Loading hotels...
+            </p>
+          </div>
+        )}
+
+        {/* EMPTY */}
+        {!loading && hotels.length === 0 && (
+          <div className="text-center py-5">
+            <div style={{ fontSize: "80px" }}>
+              ðŸ¨
+            </div>
+
+            <h3 className="fw-bold mt-3">
+              No hotels available
+            </h3>
+
+            <p className="text-muted">
+              Hotels added by the admin will appear here.
+            </p>
+          </div>
+        )}
+
+        {/* HOTELS */}
+        {!loading && hotels.length > 0 && (
+          <div className="row g-4">
+
+            {hotels.map((hotel) => (
               <div
-                className="card border-0 shadow-sm h-100"
-                style={{
-                  borderRadius: "22px",
-                  overflow: "hidden",
-                }}
+                className="col-12 col-md-6 col-lg-4"
+                key={hotel.id}
               >
                 <div
+                  className="card border-0 shadow-sm h-100"
                   style={{
-                    height: "220px",
-                    background:
-                      "linear-gradient(135deg,#6c5ce7,#0984e3)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "110px",
+                    borderRadius: "22px",
+                    overflow: "hidden",
                   }}
                 >
-                  {hotel.emoji}
-                </div>
 
-                <div className="card-body p-4">
-                  <div className="d-flex justify-content-between">
-                    <div>
-                      <h3 className="fw-bold">
-                        {hotel.name}
-                      </h3>
+                  {/* IMAGE */}
+                  <div
+                    style={{
+                      height: "220px",
+                      background:
+                        "linear-gradient(135deg,#fff0d0,#ffd27d)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {hotel.image ? (
+                      <img
+                        src={hotel.image}
+                        alt={hotel.name}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: "110px" }}>
+                        ðŸ¨
+                      </span>
+                    )}
+                  </div>
 
-                      <p className="text-muted">
-                        📍 {hotel.location}
-                      </p>
+                  {/* CONTENT */}
+                  <div className="card-body p-4">
+
+                    <div className="d-flex justify-content-between align-items-start">
+
+                      <div>
+                        <h3 className="fw-bold mb-1">
+                          {hotel.name}
+                        </h3>
+
+                        <p className="text-muted mb-2">
+                          {hotel.type || "Hotel"}
+                        </p>
+                      </div>
+
+                      <span className="badge bg-warning text-dark">
+                        â­ {hotel.rating || "0.0"}
+                      </span>
+
                     </div>
 
-                    <span
-                      className="badge bg-warning text-dark"
-                      style={{ height: "fit-content" }}
+                    {hotel.description && (
+                      <p className="text-muted">
+                        {hotel.description}
+                      </p>
+                    )}
+
+                    <p className="text-muted mb-2">
+                      ðŸ›µ{" "}
+                      {hotel.delivery_time || "30-40 min"}
+                    </p>
+
+                    <p className="text-muted mb-3">
+                      ðŸ“{" "}
+                      {hotel.address ||
+                        hotel.location ||
+                        "Nearby"}
+                    </p>
+
+                    <Link
+                      to={`/hotels/${hotel.id}`}
+                      className="btn btn-warning w-100 py-2 fw-bold"
                     >
-                      ⭐ {hotel.rating}
-                    </span>
-                  </div>
+                      View Menu â†’
+                    </Link>
 
-                  <div className="text-muted mb-4">
-                    🛵 {hotel.delivery}
                   </div>
-
-                  <Link
-                    to={`/hotels/${hotel.id}`}
-                    className="btn btn-primary w-100 py-2 fw-bold"
-                  >
-                    View Hotel Menu →
-                  </Link>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+
+          </div>
+        )}
+
       </div>
     </div>
   );

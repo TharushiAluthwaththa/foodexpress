@@ -1,48 +1,50 @@
-import React from "react";
-import {
-  NavLink,
-  Outlet,
-  useNavigate,
-} from "react-router-dom";
+import React, { useState } from "react";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
 
 function AdminLayout() {
   const navigate = useNavigate();
 
-  const admin = JSON.parse(
-    localStorage.getItem("admin_user") || "null"
-  );
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const logout = () => {
-    // Remove ONLY admin login data
+  const closeSidebar = () => {
+    setSidebarOpen(false);
+  };
+
+  const toggleSidebar = () => {
+    setSidebarOpen((prev) => !prev);
+  };
+
+  const handleLogout = () => {
     localStorage.removeItem("admin_token");
     localStorage.removeItem("admin_user");
 
-    // Go back to customer Home
+    setSidebarOpen(false);
+
     navigate("/");
-
-    // Refresh customer Navbar
-    window.location.reload();
   };
-
-  const menu = [
-    ["📊", "Dashboard", "/admin/dashboard"],
-    ["👥", "Customers", "/admin/customers"],
-    ["🛒", "Orders", "/admin/orders"],
-    ["🍽️", "Restaurants", "/admin/restaurants"],
-    ["🏨", "Hotels", "/admin/hotels"],
-    ["🍔", "Foods", "/admin/foods"],
-    ["💰", "Revenue", "/admin/revenue"],
-    ["⚙️", "Settings", "/admin/settings"],
-  ];
 
   return (
     <div className="admin-container">
 
-      {/* SIDEBAR */}
-      <aside className="admin-sidebar">
+      {/* OVERLAY */}
+      <div
+        className={`admin-sidebar-overlay ${
+          sidebarOpen ? "active" : ""
+        }`}
+        onClick={closeSidebar}
+      ></div>
 
-        {/* LOGO */}
+
+      {/* SIDEBAR */}
+      <aside
+        className={`admin-sidebar ${
+          sidebarOpen ? "active" : ""
+        }`}
+      >
+
+        {/* BRAND */}
         <div className="admin-brand">
+
           <div className="admin-brand-icon">
             🍔
           </div>
@@ -51,44 +53,185 @@ function AdminLayout() {
             <h2>FoodExpress</h2>
             <span>ADMIN PANEL</span>
           </div>
+
+          <button
+            type="button"
+            className="admin-sidebar-close"
+            onClick={closeSidebar}
+            aria-label="Close menu"
+          >
+            ✕
+          </button>
+
         </div>
 
-        {/* MENU TITLE */}
+
+        {/* MENU LABEL */}
         <div className="admin-menu-label">
           MAIN MENU
         </div>
 
-        {/* MENU */}
+
+        {/* NAVIGATION */}
         <nav className="admin-nav">
 
-          {menu.map(([icon, name, path]) => (
-            <NavLink
-              key={path}
-              to={path}
-              className={({ isActive }) =>
-                `admin-nav-item ${
-                  isActive ? "active" : ""
-                }`
-              }
-            >
-              <span className="admin-nav-icon">
-                {icon}
-              </span>
+          <NavLink
+            to="/admin/dashboard"
+            className={({ isActive }) =>
+              `admin-nav-item ${
+                isActive ? "active" : ""
+              }`
+            }
+            onClick={closeSidebar}
+          >
+            <span className="admin-nav-icon">
+              📊
+            </span>
 
-              <span>{name}</span>
-            </NavLink>
-          ))}
+            <span>
+              Dashboard
+            </span>
+          </NavLink>
+
+
+          <NavLink
+            to="/admin/customers"
+            className={({ isActive }) =>
+              `admin-nav-item ${
+                isActive ? "active" : ""
+              }`
+            }
+            onClick={closeSidebar}
+          >
+            <span className="admin-nav-icon">
+              👥
+            </span>
+
+            <span>
+              Customers
+            </span>
+          </NavLink>
+
+
+          <NavLink
+            to="/admin/orders"
+            className={({ isActive }) =>
+              `admin-nav-item ${
+                isActive ? "active" : ""
+              }`
+            }
+            onClick={closeSidebar}
+          >
+            <span className="admin-nav-icon">
+              🛒
+            </span>
+
+            <span>
+              Orders
+            </span>
+          </NavLink>
+
+
+          <NavLink
+            to="/admin/restaurants"
+            className={({ isActive }) =>
+              `admin-nav-item ${
+                isActive ? "active" : ""
+              }`
+            }
+            onClick={closeSidebar}
+          >
+            <span className="admin-nav-icon">
+              🍽️
+            </span>
+
+            <span>
+              Restaurants
+            </span>
+          </NavLink>
+
+
+          <NavLink
+            to="/admin/hotels"
+            className={({ isActive }) =>
+              `admin-nav-item ${
+                isActive ? "active" : ""
+              }`
+            }
+            onClick={closeSidebar}
+          >
+            <span className="admin-nav-icon">
+              🏨
+            </span>
+
+            <span>
+              Hotels
+            </span>
+          </NavLink>
+
+
+          <NavLink
+            to="/admin/foods"
+            className={({ isActive }) =>
+              `admin-nav-item ${
+                isActive ? "active" : ""
+              }`
+            }
+            onClick={closeSidebar}
+          >
+            <span className="admin-nav-icon">
+              🍔
+            </span>
+
+            <span>
+              Foods
+            </span>
+          </NavLink>
+
+
+          <NavLink
+            to="/admin/revenue"
+            className={({ isActive }) =>
+              `admin-nav-item ${
+                isActive ? "active" : ""
+              }`
+            }
+            onClick={closeSidebar}
+          >
+            <span className="admin-nav-icon">
+              💰
+            </span>
+
+            <span>
+              Revenue
+            </span>
+          </NavLink>
+
+
+          <NavLink
+            to="/admin/settings"
+            className={({ isActive }) =>
+              `admin-nav-item ${
+                isActive ? "active" : ""
+              }`
+            }
+            onClick={closeSidebar}
+          >
+            <span className="admin-nav-icon">
+              ⚙️
+            </span>
+
+            <span>
+              Settings
+            </span>
+          </NavLink>
 
         </nav>
 
 
-
-        
-
-        {/* BOTTOM AREA */}
+        {/* BOTTOM */}
         <div className="admin-bottom">
 
-          {/* ADMIN PROFILE */}
           <div className="admin-profile">
 
             <div className="admin-avatar">
@@ -97,21 +240,21 @@ function AdminLayout() {
 
             <div>
               <strong>
-                {admin?.name || "Administrator"}
+                Administrator
               </strong>
 
               <small>
-                {admin?.email || "Admin Account"}
+                Admin
               </small>
             </div>
 
           </div>
 
-          {/* LOGOUT BUTTON */}
+
           <button
             type="button"
             className="admin-logout"
-            onClick={logout}
+            onClick={handleLogout}
           >
             <span>🚪</span>
             <span>Logout</span>
@@ -121,100 +264,131 @@ function AdminLayout() {
 
       </aside>
 
-      {/* MAIN AREA */}
+
+      {/* MAIN */}
       <main className="admin-main">
 
-        {/* TOP BAR */}
+        {/* TOPBAR */}
         <header className="admin-topbar">
 
-          <div>
-            <h3>Dashboard</h3>
+          <button
+            type="button"
+            className="admin-menu-toggle"
+            onClick={toggleSidebar}
+            aria-label="Open admin menu"
+          >
+            ☰
+          </button>
+
+
+          <div className="admin-top-title">
+
+            <h3>
+              Admin Panel
+            </h3>
 
             <p>
-              Welcome back! Here's what's happening today.
+              Manage your FoodExpress system
             </p>
+
           </div>
 
 
+          <div className="admin-top-right">
 
-      
-        
-<div className="admin-top-right">
-
-  {/* Notification */}
-  <button
-    type="button"
-    className="notification-btn"
-  >
-    🔔
-  </button>
-
-  {/* ADMIN PROFILE */}
-  <div className="admin-profile-dropdown">
-
-    <button
-      type="button"
-      className="top-admin-profile-btn"
-    >
-      <div className="top-admin-avatar">
-        👤
-      </div>
-
-      <div className="top-admin-info">
-        <strong>Admin</strong>
-        <small>Administrator</small>
-      </div>
-
-      <span className="profile-arrow">
-        ▾
-      </span>
-    </button>
-
-    {/* DROPDOWN */}
-    <div className="admin-profile-menu">
-
-      <div className="profile-menu-header">
-        <div className="profile-menu-avatar">
-          👤
-        </div>
-
-        <div>
-          <strong>Admin</strong>
-          <small>Administrator</small>
-        </div>
-      </div>
-
-      <hr />
-
-      <button
-        type="button"
-        className="profile-menu-item logout-item"
-        onClick={() => {
-          localStorage.removeItem("admin_token");
-          localStorage.removeItem("admin_user");
-
-          window.location.href = "/";
-        }}
-      >
-        <span>🚪</span>
-        <span>Logout</span>
-      </button>
-
-    </div>
-
-  </div>
-
-</div>
+            <button
+              type="button"
+              className="notification-btn"
+            >
+              🔔
+            </button>
 
 
+            <div className="admin-profile-dropdown">
+
+              <button
+                type="button"
+                className="top-admin-profile-btn"
+              >
+
+                <div className="top-admin-avatar">
+                  👤
+                </div>
+
+                <div className="top-admin-info">
+                  <strong>
+                    Administrator
+                  </strong>
+
+                  <small>
+                    Admin
+                  </small>
+                </div>
+
+                <span className="profile-arrow">
+                  ▼
+                </span>
+
+              </button>
 
 
+              <div className="admin-profile-menu">
+
+                <div className="profile-menu-header">
+
+                  <div className="profile-menu-avatar">
+                    👤
+                  </div>
+
+                  <div>
+                    <strong>
+                      Administrator
+                    </strong>
+
+                    <small>
+                      Administrator
+                    </small>
+                  </div>
+
+                </div>
 
 
+                <hr />
 
 
+                <button
+                  type="button"
+                  className="profile-menu-item"
+                  onClick={() => {
+                    navigate("/admin/settings");
+                  }}
+                >
+                  ⚙️
+                  <span>
+                    Settings
+                  </span>
+                </button>
+
+
+                <button
+                  type="button"
+                  className="profile-menu-item logout-item"
+                  onClick={handleLogout}
+                >
+                  🚪
+                  <span>
+                    Logout
+                  </span>
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
 
         </header>
+
 
         {/* PAGE CONTENT */}
         <section className="admin-content">

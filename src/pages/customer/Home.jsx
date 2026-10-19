@@ -1,71 +1,60 @@
-import React from "react";
+﻿import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import api from "../../services/api";
+import axios from "axios";
 
 function Home() {
-  const categories = [
-    {
-      icon: "🍔",
-      name: "Burgers",
-      text: "Juicy & delicious",
-    },
-    {
-      icon: "🍕",
-      name: "Pizza",
-      text: "Hot & cheesy",
-    },
-    {
-      icon: "🍗",
-      name: "Chicken",
-      text: "Crispy & tasty",
-    },
-    {
-      icon: "🍜",
-      name: "Noodles",
-      text: "Fresh & spicy",
-    },
-    {
-      icon: "🍰",
-      name: "Desserts",
-      text: "Sweet moments",
-    },
-    {
-      icon: "🥤",
-      name: "Drinks",
-      text: "Cool & refreshing",
-    },
-  ];
+  const [restaurants, setRestaurants] = useState([]);
+  const [loadingRestaurants, setLoadingRestaurants] = useState(true);
 
-  const restaurants = [
-    {
-      name: "KFC",
-      type: "Fast Food",
-      rating: "4.8",
-      delivery: "20-30 min",
-      image:
-        "https://images.unsplash.com/photo-1513639776629-7b61b0ac49cb?auto=format&fit=crop&w=800&q=80",
-    },
-    {
-      name: "Pizza Hut",
-      type: "Pizza & Italian",
-      rating: "4.7",
-      delivery: "25-35 min",
-      image:
-        "https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=800&q=80",
-    },
-    {
-      name: "Burger House",
-      type: "Burgers",
-      rating: "4.9",
-      delivery: "15-25 min",
-      image:
-        "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80",
-    },
-  ];
+  
+const categories = [
+  { icon: "🍔", name: "Burgers", text: "Juicy & delicious" },
+  { icon: "🍕", name: "Pizza", text: "Hot & cheesy" },
+  { icon: "🍗", name: "Chicken", text: "Crispy & tasty" },
+  { icon: "🍜", name: "Noodles", text: "Fresh & spicy" },
+  { icon: "🍰", name: "Desserts", text: "Sweet moments" },
+  { icon: "🥤", name: "Drinks", text: "Cool & refreshing" },
+];
+
+
+  // ==========================================
+  // LOAD RESTAURANTS FROM DATABASE
+  // ==========================================
+  useEffect(() => {
+    fetchRestaurants();
+  }, []);
+
+  
+const fetchRestaurants = async () => {
+  try {
+    const response = await api.get("/restaurants");
+
+    console.log("Restaurants API:", response.data);
+
+    const data = response.data;
+
+    const restaurantList = Array.isArray(data)
+      ? data
+      : Array.isArray(data.restaurants)
+      ? data.restaurants
+      : Array.isArray(data.data)
+      ? data.data
+      : [];
+
+    setRestaurants(restaurantList);
+  } catch (error) {
+    console.error("Failed to load restaurants:", error);
+    setRestaurants([]);
+  } finally {
+    setLoadingRestaurants(false);
+  }
+};
 
   return (
     <div className="food-home">
 
-      {/* HERO */}
+      {/* ================= HERO ================= */}
 
       <section className="hero-section">
 
@@ -73,12 +62,14 @@ function Home() {
 
         <div className="container hero-content">
 
-          <div className="row align-items-center">
+          <div className="row align-items-center g-4">
 
-            <div className="col-lg-7">
+            {/* HERO TEXT */}
+
+            <div className="col-12 col-lg-7">
 
               <span className="hero-small">
-                🔥 Delicious food is waiting
+                🍔 Delicious food is waiting
               </span>
 
               <h1>
@@ -99,14 +90,14 @@ function Home() {
                   to="/restaurants"
                   className="hero-primary-btn"
                 >
-                  🍔 Order Now
+                  ðŸ” Order Now
                 </Link>
 
                 <Link
                   to="/restaurants"
                   className="hero-secondary-btn"
                 >
-                  Explore Restaurants →
+                  Explore Restaurants â†’
                 </Link>
 
               </div>
@@ -114,7 +105,7 @@ function Home() {
               <div className="hero-stats">
 
                 <div>
-                  <strong>500+</strong>
+                  <strong>{restaurants.length}+</strong>
                   <span>Restaurants</span>
                 </div>
 
@@ -132,7 +123,10 @@ function Home() {
 
             </div>
 
-            <div className="col-lg-5">
+
+            {/* HERO FOOD CARD */}
+
+            <div className="col-12 col-lg-5">
 
               <div className="hero-food-card">
 
@@ -141,16 +135,27 @@ function Home() {
                 </div>
 
                 <div className="hero-food-info">
+
                   <div>
-                    <h4>Special Burger</h4>
-                    <p>Cheese • Chicken • Fresh Veggies</p>
+
+                    <h4>
+                      Special Burger
+                    </h4>
+
+                    <p>
+                      Cheese â€¢ Chicken â€¢ Fresh Veggies
+                    </p>
+
                   </div>
 
-                  <strong>$8.99</strong>
+                  <strong>
+                    $8.99
+                  </strong>
+
                 </div>
 
                 <div className="hero-rating">
-                  ⭐ 4.9
+                  â­ 4.9
                 </div>
 
               </div>
@@ -164,7 +169,7 @@ function Home() {
       </section>
 
 
-      {/* SEARCH */}
+      {/* ================= SEARCH ================= */}
 
       <section className="search-section">
 
@@ -172,14 +177,14 @@ function Home() {
 
           <div className="search-box">
 
-            <span>🔍</span>
+            <span>🍜</span>
 
             <input
               type="text"
               placeholder="Search for restaurants, food or hotels..."
             />
 
-            <button>
+            <button type="button">
               Search
             </button>
 
@@ -190,7 +195,7 @@ function Home() {
       </section>
 
 
-      {/* CATEGORIES */}
+      {/* ================= CATEGORIES ================= */}
 
       <section className="category-section">
 
@@ -199,15 +204,23 @@ function Home() {
           <div className="section-heading">
 
             <div>
-              <span>EXPLORE</span>
-              <h2>What are you craving?</h2>
+
+              <span>
+                EXPLORE
+              </span>
+
+              <h2>
+                What are you craving?
+              </h2>
+
             </div>
 
             <Link to="/restaurants">
-              View All →
+              View All 🍜
             </Link>
 
           </div>
+
 
           <div className="category-grid">
 
@@ -222,9 +235,13 @@ function Home() {
                   {category.icon}
                 </div>
 
-                <h4>{category.name}</h4>
+                <h4>
+                  {category.name}
+                </h4>
 
-                <p>{category.text}</p>
+                <p>
+                  {category.text}
+                </p>
 
               </div>
 
@@ -237,7 +254,7 @@ function Home() {
       </section>
 
 
-      {/* PROMO */}
+      {/* ================= PROMO ================= */}
 
       <section className="promo-section">
 
@@ -245,7 +262,7 @@ function Home() {
 
           <div className="promo-card">
 
-            <div>
+            <div className="promo-content">
 
               <span>
                 SPECIAL OFFER
@@ -264,13 +281,13 @@ function Home() {
               </p>
 
               <Link to="/restaurants">
-                Order Now →
+                Order Now 🍜
               </Link>
 
             </div>
 
             <div className="promo-emoji">
-              🍕
+              🍜
             </div>
 
           </div>
@@ -280,7 +297,7 @@ function Home() {
       </section>
 
 
-      {/* RESTAURANTS */}
+      {/* ================= RESTAURANTS ================= */}
 
       <section className="restaurant-section">
 
@@ -289,84 +306,222 @@ function Home() {
           <div className="section-heading">
 
             <div>
-              <span>TOP PICKS</span>
-              <h2>Popular Restaurants</h2>
+
+              <span>
+                TOP PICKS
+              </span>
+
+              <h2>
+                Popular Restaurants
+              </h2>
+
             </div>
 
             <Link to="/restaurants">
-              See All →
+              See All 🍜
             </Link>
 
           </div>
 
-          <div className="row g-4">
 
-            {restaurants.map((restaurant) => (
+          {/* LOADING */}
+
+          {loadingRestaurants && (
+
+            <div className="text-center py-5">
+
+              <div className="spinner-border text-warning"></div>
+
+              <p className="text-muted mt-3">
+                Loading restaurants...
+              </p>
+
+            </div>
+
+          )}
+
+
+          {/* NO RESTAURANTS */}
+
+          {!loadingRestaurants && restaurants.length === 0 && (
+
+            <div className="text-center py-5">
 
               <div
-                className="col-md-6 col-lg-4"
-                key={restaurant.name}
+                style={{
+                  fontSize: "70px",
+                }}
               >
+                🍜
+              </div>
 
-                <div className="restaurant-card">
+              <h3 className="fw-bold mt-3">
+                No restaurants available
+              </h3>
 
-                  <div className="restaurant-image">
+              <p className="text-muted">
+                Restaurants added by the admin will
+                appear here.
+              </p>
 
-                    <img
-                      src={restaurant.image}
-                      alt={restaurant.name}
-                    />
+              <Link
+                to="/restaurants"
+                className="btn btn-warning fw-bold mt-2"
+              >
+                View Restaurants
+              </Link>
 
-                    <span className="restaurant-offer">
-                      FREE DELIVERY
-                    </span>
+            </div>
 
-                  </div>
+          )}
 
-                  <div className="restaurant-info">
 
-                    <div className="restaurant-title">
+          {/* RESTAURANT CARDS */}
 
-                      <div>
-                        <h3>{restaurant.name}</h3>
-                        <p>{restaurant.type}</p>
-                      </div>
+          {!loadingRestaurants && restaurants.length > 0 && (
 
-                      <span className="rating">
-                        ⭐ {restaurant.rating}
+            <div className="row g-4">
+
+              {restaurants.map((restaurant) => (
+
+                <div
+                  className="col-12 col-md-6 col-lg-4"
+                  key={restaurant.id}
+                >
+
+                  <div className="restaurant-card">
+
+                    {/* IMAGE */}
+
+                    <div className="restaurant-image">
+
+                      {restaurant.image ? (
+
+                        <img
+                          src={restaurant.image}
+                          alt={restaurant.name}
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.style.display =
+                              "none";
+                          }}
+                        />
+
+                      ) : (
+
+                        <div
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "100px",
+                            background:
+                              "linear-gradient(135deg,#fff0d0,#ffd27d)",
+                          }}
+                        >
+                          🍜
+                        </div>
+
+                      )}
+
+                      <span className="restaurant-offer">
+                        FREE DELIVERY
                       </span>
 
                     </div>
 
-                    <div className="restaurant-meta">
-                      🛵 {restaurant.delivery}
-                      <span>•</span>
-                      📍 Nearby
-                    </div>
 
-                    <Link
-                      to="/restaurants"
-                      className="view-menu-btn"
-                    >
-                      View Menu
-                    </Link>
+                    {/* RESTAURANT INFO */}
+
+                    <div className="restaurant-info">
+
+                      <div className="restaurant-title">
+
+                        <div>
+
+                          <h3>
+                            {restaurant.name}
+                          </h3>
+
+                          <p>
+                            {restaurant.type ||
+                              "Restaurant"}
+                          </p>
+
+                        </div>
+
+                        <span className="rating">
+                          â­ {restaurant.rating || "0.0"}
+                        </span>
+
+                      </div>
+
+
+                      {restaurant.description && (
+
+                        <p
+                          style={{
+                            color: "#777",
+                            fontSize: "13px",
+                            marginTop: "8px",
+                            marginBottom: "8px",
+                          }}
+                        >
+                          {restaurant.description}
+                        </p>
+
+                      )}
+
+
+                      <div className="restaurant-meta">
+
+                        <span>
+                          ðŸ›µ{" "}
+                          {restaurant.delivery_time ||
+                            "20-30 min"}
+                        </span>
+
+                        <span>
+                          🍜
+                        </span>
+
+                        <span>
+                          ðŸ“{" "}
+                          {restaurant.address ||
+                            restaurant.location ||
+                            "Nearby"}
+                        </span>
+
+                      </div>
+
+
+                      <Link
+                        to={`/restaurants/${restaurant.id}`}
+                        className="view-menu-btn"
+                      >
+                        View Menu
+                      </Link>
+
+                    </div>
 
                   </div>
 
                 </div>
 
-              </div>
+              ))}
 
-            ))}
+            </div>
 
-          </div>
+          )}
 
         </div>
 
       </section>
 
 
-      {/* WHY FOOD EXPRESS */}
+      {/* ================= WHY FOOD EXPRESS ================= */}
 
       <section className="why-section">
 
@@ -375,49 +530,83 @@ function Home() {
           <div className="section-heading centered">
 
             <div>
-              <span>WHY FOOD EXPRESS?</span>
-              <h2>Food delivery made simple</h2>
+
+              <span>
+                WHY FOOD EXPRESS?
+              </span>
+
+              <h2>
+                Food delivery made simple
+              </h2>
+
             </div>
 
           </div>
 
+
           <div className="row g-4 mt-3">
 
-            <div className="col-md-4">
+            <div className="col-12 col-md-4">
 
               <div className="why-card">
-                <div>⚡</div>
-                <h3>Fast Delivery</h3>
+
+                <div>
+                  🍜
+                </div>
+
+                <h3>
+                  Fast Delivery
+                </h3>
+
                 <p>
                   Get your favorite meals delivered
                   quickly and safely.
                 </p>
+
               </div>
 
             </div>
 
-            <div className="col-md-4">
+
+            <div className="col-12 col-md-4">
 
               <div className="why-card">
-                <div>🍽️</div>
-                <h3>Best Restaurants</h3>
+
+                <div>
+                  🍜
+                </div>
+
+                <h3>
+                  Best Restaurants
+                </h3>
+
                 <p>
                   Discover amazing restaurants and
                   hotels near you.
                 </p>
+
               </div>
 
             </div>
 
-            <div className="col-md-4">
+
+            <div className="col-12 col-md-4">
 
               <div className="why-card">
-                <div>💳</div>
-                <h3>Easy Checkout</h3>
+
+                <div>
+                  🍜
+                </div>
+
+                <h3>
+                  Easy Checkout
+                </h3>
+
                 <p>
                   Simple ordering and secure checkout
                   every time.
                 </p>
+
               </div>
 
             </div>

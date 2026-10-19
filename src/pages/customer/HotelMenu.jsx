@@ -1,92 +1,105 @@
-
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import api from "../../services/api";
 
 function HotelMenu() {
   const { id } = useParams();
 
-  const hotelName =
-    id === "1"
-      ? "Grand Hotel"
-      : id === "2"
-      ? "Ocean View Hotel"
-      : "FoodExpress Hotel";
+  const [hotel, setHotel] = useState(null);
+  const [foods, setFoods] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const foods = [
-    {
-      id: 101,
-      name: "Chicken Fried Rice",
-      description: "Fragrant rice with chicken and fresh vegetables.",
-      price: 9.99,
-      emoji: "🍚",
-    },
-    {
-      id: 102,
-      name: "Chicken Kottu",
-      description: "Sri Lankan style spicy chicken kottu.",
-      price: 8.99,
-      emoji: "🍛",
-    },
-    {
-      id: 103,
-      name: "Devilled Chicken",
-      description: "Spicy chicken cooked with onions and peppers.",
-      price: 10.99,
-      emoji: "🍗",
-    },
-    {
-      id: 104,
-      name: "Pasta",
-      description: "Creamy pasta with chicken and vegetables.",
-      price: 11.99,
-      emoji: "🍝",
-    },
-    {
-      id: 105,
-      name: "Chocolate Cake",
-      description: "Soft chocolate cake with chocolate cream.",
-      price: 5.99,
-      emoji: "🍰",
-    },
-    {
-      id: 106,
-      name: "Fresh Juice",
-      description: "Freshly prepared fruit juice.",
-      price: 3.99,
-      emoji: "🥤",
-    },
-  ];
+  useEffect(() => {
+    loadHotelMenu();
+  }, [id]);
 
-  const addToCart = (food) => {
-    const oldCart = JSON.parse(localStorage.getItem("cart") || "[]");
+  const loadHotelMenu = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-    const existing = oldCart.find(
-      (item) => item.id === food.id && item.hotel === hotelName
-    );
+      // Get hotel details
+      const hotelResponse = await api.get(`/hotels/${id}`);
 
-    let newCart;
+      setHotel(hotelResponse.data.hotel || hotelResponse.data);
 
-    if (existing) {
-      newCart = oldCart.map((item) =>
-        item.id === food.id && item.hotel === hotelName
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
+      // Get hotel foods
+      const foodsResponse = await api.get(`/hotels/${id}/foods`);
+
+      setFoods(
+        foodsResponse.data.foods ||
+        foodsResponse.data.data ||
+        foodsResponse.data ||
+        []
       );
-    } else {
-      newCart = [
-        ...oldCart,
-        {
-          ...food,
-          quantity: 1,
-          hotel: hotelName,
-        },
-      ];
+
+    } catch (error) {
+      console.error("Hotel menu error:", error);
+
+      setError(
+        error.response?.data?.message ||
+        "Failed to load hotel menu."
+      );
+    } finally {
+      setLoading(false);
     }
-
-    localStorage.setItem("cart", JSON.stringify(newCart));
-
-    alert(`${food.name} added to cart! 🛒`);
   };
+
+  const addToCart = async (food) => {
+    try {
+      await api.post("/cart", {
+        food_id: food.id,
+        quantity: 1,
+      });
+
+      alert(`🛒 ${food.name} added to cart!`);
+
+    } catch (error) {
+      console.error("Add to cart error:", error);
+
+      if (error.response?.status === 401) {
+        alert("Please login first.");
+        return;
+      }
+
+      alert(
+        error.response?.data?.message ||
+        "Failed to add item to cart."
+      );
+    }
+  };
+
+  if (loading) {
+    return (
+      <div
+        className="d-flex justify-content-center align-items-center"
+        style={{ minHeight: "70vh" }}
+      >
+        <div className="text-center">
+          <div className="spinner-border text-primary mb-3"></div>
+          <h5>Loading hotel menu...</h5>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container py-5">
+        <div className="alert alert-danger">
+          {error}
+        </div>
+
+        <Link
+          to="/hotels"
+          className="btn btn-dark"
+        >
+          ← Back to Hotels
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -96,6 +109,7 @@ function HotelMenu() {
         paddingBottom: "60px",
       }}
     >
+      {/* Header */}
       <div
         style={{
           background:
@@ -112,41 +126,18 @@ function HotelMenu() {
             ← Back to Hotels
           </Link>
 
-          <div className="row align-items-center mt-4">
-            <div className="col-md-8">
-              <span className="badge bg-light text-dark mb-3">
-                HOTEL RESTAURANT
-              </span>
+          <h1 className="fw-bold mt-4 mb-2">
+            {hotel?.name || "Hotel Menu"}
+          </h1>
 
-              <h1 className="display-4 fw-bold">
-                {hotelName}
-              </h1>
-
-              <p className="fs-5">
-                Premium hotel food delivered to your doorstep.
-              </p>
-
-              <div className="fs-5">
-                ⭐ 4.8 &nbsp; • &nbsp; 🛵 25-35 min
-              </div>
-            </div>
-
-            <div className="col-md-4 text-center">
-              <div
-                style={{
-                  fontSize: "120px",
-                  background: "rgba(255,255,255,.15)",
-                  borderRadius: "30px",
-                  padding: "20px",
-                }}
-              >
-                🏨
-              </div>
-            </div>
-          </div>
+          <p className="mb-0">
+            {hotel?.description ||
+              "Delicious meals prepared for you."}
+          </p>
         </div>
       </div>
 
+      {/* Menu */}
       <div className="container py-5">
         <div className="mb-4">
           <small
@@ -168,65 +159,80 @@ function HotelMenu() {
           </p>
         </div>
 
-        <div className="row g-4">
-          {foods.map((food) => (
-            <div
-              className="col-md-6 col-lg-4"
-              key={food.id}
-            >
+        {foods.length === 0 ? (
+          <div className="alert alert-info">
+            No food items are available at this hotel yet.
+          </div>
+        ) : (
+          <div className="row g-4">
+            {foods.map((food) => (
               <div
-                className="card border-0 shadow-sm h-100"
-                style={{
-                  borderRadius: "20px",
-                  overflow: "hidden",
-                }}
+                className="col-md-6 col-lg-4"
+                key={food.id}
               >
                 <div
+                  className="card border-0 shadow-sm h-100"
                   style={{
-                    height: "190px",
-                    background:
-                      "linear-gradient(135deg,#e8e4ff,#d6ecff)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "100px",
+                    borderRadius: "20px",
+                    overflow: "hidden",
                   }}
                 >
-                  {food.emoji}
-                </div>
+                  {/* Image / Emoji */}
+                  <div
+                    style={{
+                      height: "190px",
+                      background:
+                        "linear-gradient(135deg,#e8e4ff,#d6ecff)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "90px",
+                    }}
+                  >
+                    🍽️
+                  </div>
 
-                <div className="card-body p-4">
-                  <h4 className="fw-bold">
-                    {food.name}
-                  </h4>
+                  <div className="card-body p-4 d-flex flex-column">
+                    <h4 className="fw-bold">
+                      {food.name}
+                    </h4>
 
-                  <p className="text-muted">
-                    {food.description}
-                  </p>
+                    <p className="text-muted">
+                      {food.description ||
+                        "Delicious meal prepared fresh for you."}
+                    </p>
 
-                  <div className="d-flex justify-content-between align-items-center mt-4">
-                    <strong
-                      style={{
-                        color: "#6c5ce7",
-                        fontSize: "22px",
-                      }}
-                    >
-                      ${food.price.toFixed(2)}
-                    </strong>
+                    <div className="d-flex justify-content-between align-items-center mt-auto pt-3">
+                      <strong
+                        style={{
+                          color: "#6c5ce7",
+                          fontSize: "22px",
+                        }}
+                      >
+                        $
+                        {Number(food.price).toFixed(2)}
+                      </strong>
 
-                    <button
-                      className="btn btn-primary fw-bold"
-                      onClick={() => addToCart(food)}
-                    >
-                      + Add
-                    </button>
+                      <button
+                        className="btn btn-primary fw-bold"
+                        onClick={() => addToCart(food)}
+                        disabled={
+                          food.is_available === false
+                        }
+                      >
+                        {food.is_available === false
+                          ? "Unavailable"
+                          : "+ Add"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
+        {/* Cart Button */}
         <div className="text-center mt-5">
           <Link
             to="/cart"

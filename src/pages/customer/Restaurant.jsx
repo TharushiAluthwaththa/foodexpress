@@ -1,58 +1,34 @@
-
-import React from "react";
+﻿import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import api from "../../services/api";
+import axios from "axios";
 
 function Restaurant() {
-  const restaurants = [
-    {
-      id: 1,
-      name: "KFC",
-      type: "Fast Food",
-      rating: "4.8",
-      delivery: "20-30 min",
-      emoji: "🍗",
-    },
-    {
-      id: 2,
-      name: "Pizza Hut",
-      type: "Pizza & Italian",
-      rating: "4.7",
-      delivery: "25-35 min",
-      emoji: "🍕",
-    },
-    {
-      id: 3,
-      name: "Burger House",
-      type: "Burgers",
-      rating: "4.9",
-      delivery: "15-25 min",
-      emoji: "🍔",
-    },
-    {
-      id: 4,
-      name: "Noodle House",
-      type: "Asian",
-      rating: "4.6",
-      delivery: "20-30 min",
-      emoji: "🍜",
-    },
-    {
-      id: 5,
-      name: "Chicken Corner",
-      type: "Chicken",
-      rating: "4.8",
-      delivery: "25-35 min",
-      emoji: "🍗",
-    },
-    {
-      id: 6,
-      name: "Sweet Bakery",
-      type: "Desserts",
-      rating: "4.7",
-      delivery: "15-25 min",
-      emoji: "🍰",
-    },
-  ];
+  const [restaurants, setRestaurants] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadRestaurants();
+  }, []);
+
+  const loadRestaurants = async () => {
+    try {
+      const response = await api.get("/restaurants");
+
+      console.log("Customer Restaurants:", response.data);
+
+      setRestaurants(response.data.restaurants || []);
+    } catch (error) {
+      console.error(
+        "Restaurant loading error:",
+        error.response?.data || error.message
+      );
+
+      setRestaurants([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
@@ -63,7 +39,10 @@ function Restaurant() {
       }}
     >
       <div className="container">
+
+        {/* HEADER */}
         <div className="text-center mb-5">
+
           <small
             style={{
               color: "#ff9f1c",
@@ -75,73 +54,174 @@ function Restaurant() {
           </small>
 
           <h1 className="fw-bold display-5">
-            🍽️ Restaurants
+            ðŸ½ï¸ Restaurants
           </h1>
 
           <p className="text-muted fs-5">
             Find your favorite restaurant and order delicious food.
           </p>
+
         </div>
 
-        <div className="row g-4">
-          {restaurants.map((restaurant) => (
+
+        {/* LOADING */}
+        {loading && (
+          <div className="text-center py-5">
+
+            <div className="spinner-border text-warning"></div>
+
+            <p className="text-muted mt-3">
+              Loading restaurants...
+            </p>
+
+          </div>
+        )}
+
+
+        {/* EMPTY */}
+        {!loading && restaurants.length === 0 && (
+          <div className="text-center py-5">
+
             <div
-              className="col-md-6 col-lg-4"
-              key={restaurant.id}
+              style={{
+                fontSize: "80px",
+              }}
             >
+              ðŸ½ï¸
+            </div>
+
+            <h3 className="fw-bold mt-3">
+              No restaurants available
+            </h3>
+
+            <p className="text-muted">
+              Restaurants added by the admin will appear here.
+            </p>
+
+          </div>
+        )}
+
+
+        {/* RESTAURANTS */}
+        {!loading && restaurants.length > 0 && (
+          <div className="row g-4">
+
+            {restaurants.map((restaurant) => (
+
               <div
-                className="card border-0 shadow-sm h-100"
-                style={{
-                  borderRadius: "22px",
-                  overflow: "hidden",
-                }}
+                className="col-12 col-md-6 col-lg-4"
+                key={restaurant.id}
               >
+
                 <div
+                  className="card border-0 shadow-sm h-100"
                   style={{
-                    height: "210px",
-                    background:
-                      "linear-gradient(135deg,#fff0d0,#ffd27d)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "110px",
+                    borderRadius: "22px",
+                    overflow: "hidden",
                   }}
                 >
-                  {restaurant.emoji}
-                </div>
 
-                <div className="card-body p-4">
-                  <div className="d-flex justify-content-between align-items-start">
-                    <div>
-                      <h3 className="fw-bold">
-                        {restaurant.name}
-                      </h3>
+                  {/* IMAGE */}
+                  <div
+                    style={{
+                      height: "210px",
+                      background:
+                        "linear-gradient(135deg,#fff0d0,#ffd27d)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      overflow: "hidden",
+                    }}
+                  >
 
-                      <p className="text-muted mb-2">
-                        {restaurant.type}
-                      </p>
-                    </div>
+                    {restaurant.image ? (
+                      <img
+                        src={restaurant.image}
+                        alt={restaurant.name}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: "110px",
+                        }}
+                      >
+                        ðŸ½ï¸
+                      </span>
+                    )}
 
-                    <span className="badge bg-warning text-dark">
-                      ⭐ {restaurant.rating}
-                    </span>
                   </div>
 
-                  <p className="text-muted">
-                    🛵 {restaurant.delivery}
-                  </p>
 
-                  <Link
-                    to={`/restaurants/${restaurant.id}`}
-                    className="btn btn-warning w-100 py-2 fw-bold"
-                  >
-                    View Menu →
-                  </Link>
+                  {/* BODY */}
+                  <div className="card-body p-4">
+
+                    <div className="d-flex justify-content-between align-items-start">
+
+                      <div>
+
+                        <h3 className="fw-bold mb-1">
+                          {restaurant.name}
+                        </h3>
+
+                        <p className="text-muted mb-2">
+                          {restaurant.type || "Restaurant"}
+                        </p>
+
+                      </div>
+
+                      <span className="badge bg-warning text-dark">
+                        â­ {restaurant.rating || "0.0"}
+                      </span>
+
+                    </div>
+
+
+                    {restaurant.description && (
+                      <p className="text-muted">
+                        {restaurant.description}
+                      </p>
+                    )}
+
+
+                    <p className="text-muted">
+                      ðŸ›µ {restaurant.delivery_time || "20-30 min"}
+                    </p>
+
+
+                    <p className="text-muted">
+                      ðŸ“{" "}
+                      {restaurant.address ||
+                        restaurant.location ||
+                        "Nearby"}
+                    </p>
+
+
+                    <Link
+                      to={`/restaurants/${restaurant.id}`}
+                      className="btn btn-warning w-100 py-2 fw-bold"
+                    >
+                      View Menu â†’
+                    </Link>
+
+                  </div>
+
                 </div>
+
               </div>
-            </div>
-          ))}
-        </div>
+
+            ))}
+
+          </div>
+        )}
+
       </div>
     </div>
   );

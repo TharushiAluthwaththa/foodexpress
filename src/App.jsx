@@ -1,10 +1,19 @@
 import React from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
+
+// ================= COMPONENTS =================
 
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AdminLayout from "./components/AdminLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+
+// ================= CUSTOMER PAGES =================
 
 import Home from "./pages/customer/Home";
 import Restaurant from "./pages/customer/Restaurant";
@@ -17,6 +26,8 @@ import Cart from "./pages/customer/Cart";
 import Checkout from "./pages/customer/Checkout";
 import Orders from "./pages/customer/Orders";
 
+// ================= ADMIN PAGES =================
+
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminCustomers from "./pages/admin/AdminCustomers";
@@ -27,23 +38,35 @@ import AdminFoods from "./pages/admin/AdminFoods";
 import AdminRevenue from "./pages/admin/AdminRevenue";
 import AdminSettings from "./pages/admin/AdminSettings";
 
+// ================= CSS =================
+
 import "./Admin.css";
 import "./Customer.css";
+
 
 function App() {
   const location = useLocation();
 
+  // Admin pages වලදී Customer Navbar/Footer hide කරනවා
   const isAdmin = location.pathname.startsWith("/admin");
 
   return (
     <>
+      {/* ================= CUSTOMER NAVBAR ================= */}
+
       {!isAdmin && <Navbar />}
+
 
       <Routes>
 
-        {/* ================= CUSTOMER ================= */}
+        {/* ================================================= */}
+        {/*                    CUSTOMER                       */}
+        {/* ================================================= */}
 
-        <Route path="/" element={<Home />} />
+        <Route
+          path="/"
+          element={<Home />}
+        />
 
         <Route
           path="/restaurants"
@@ -99,7 +122,9 @@ function App() {
         />
 
 
-        {/* ================= ADMIN LOGIN ================= */}
+        {/* ================================================= */}
+        {/*                  ADMIN LOGIN                      */}
+        {/* ================================================= */}
 
         <Route
           path="/admin/login"
@@ -107,7 +132,9 @@ function App() {
         />
 
 
-        {/* ================= ADMIN PANEL ================= */}
+        {/* ================================================= */}
+        {/*                  ADMIN PANEL                      */}
+        {/* ================================================= */}
 
         <Route
           path="/admin"
@@ -118,50 +145,76 @@ function App() {
           }
         >
 
+          {/* /admin → /admin/dashboard */}
+
           <Route
             index
             element={
               <Navigate
-                to="/admin/AdminDashboard"
+                to="/admin/dashboard"
                 replace
               />
             }
           />
+
+
+          {/* ================= DASHBOARD ================= */}
 
           <Route
             path="dashboard"
             element={<AdminDashboard />}
           />
 
+
+          {/* ================= CUSTOMERS ================= */}
+
           <Route
             path="customers"
             element={<AdminCustomers />}
           />
+
+
+          {/* ================= ORDERS ================= */}
 
           <Route
             path="orders"
             element={<AdminOrders />}
           />
 
+
+          {/* ================= RESTAURANTS ================= */}
+
           <Route
             path="restaurants"
             element={<AdminRestaurants />}
           />
+
+
+          {/* ================= HOTELS ================= */}
 
           <Route
             path="hotels"
             element={<AdminHotels />}
           />
 
+
+          {/* ================= FOODS ================= */}
+
           <Route
             path="foods"
             element={<AdminFoods />}
           />
 
+
+          {/* ================= REVENUE ================= */}
+
           <Route
             path="revenue"
             element={<AdminRevenue />}
           />
+
+
+          {/* ================= SETTINGS ================= */}
 
           <Route
             path="settings"
@@ -170,14 +223,25 @@ function App() {
 
         </Route>
 
-        {/* ================= 404 ================= */}
+
+        {/* ================================================= */}
+        {/*                     404                           */}
+        {/* ================================================= */}
 
         <Route
           path="*"
-          element={<Navigate to="/" replace />}
+          element={
+            <Navigate
+              to="/"
+              replace
+            />
+          }
         />
 
       </Routes>
+
+
+      {/* ================= CUSTOMER FOOTER ================= */}
 
       {!isAdmin && <Footer />}
     </>

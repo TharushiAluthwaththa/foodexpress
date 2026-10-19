@@ -1,564 +1,618 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../../services/api";
 
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-
-function Checkout() {
+export default function Checkout() {
   const navigate = useNavigate();
 
-  const [cart] = useState(() => {
-    try {
-      return JSON.parse(
-        localStorage.getItem("cart") || "[]"
-      );
-    } catch {
-      return [];
-    }
-  });
-
-  const customer = JSON.parse(
-    localStorage.getItem("customer_user") || "null"
-  );
+  const [cart, setCart] = useState([]);
+  const [subtotal, setSubtotal] = useState(0);
+  const [deliveryFee, setDeliveryFee] = useState(0);
+  const [total, setTotal] = useState(0);
 
   const [form, setForm] = useState({
-    name: customer?.name || "",
+    customer_name: "",
     phone: "",
     address: "",
     city: "",
+    latitude: "",
+    longitude: "",
+    payment_method: "cash_on_delivery",
     notes: "",
   });
 
-  const [payment, setPayment] = useState("cash");
+  const [loading, setLoading] = useState(true);
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const [error, setError] = useState("");
 
-  const getPrice = (item) =>
-    Number(item.price || item.amount || 0);
+  // ==============================
+  // LOAD CART + CUSTOMER
+  // ==============================
+  useEffect(() => {
+    loadCart();
 
-  const getQuantity = (item) =>
-    Number(item.quantity || 1);
+    const savedUser = localStorage.getItem("customer_user");
 
-  const subtotal = cart.reduce(
-    (total, item) =>
-      total +
-      getPrice(item) * getQuantity(item),
-    0
-  );
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
 
-  const deliveryFee = cart.length > 0 ? 2.5 : 0;
+        setForm((prev) => ({
+          ...prev,
+          customer_name: user.name || "",
+          phone: user.phone || "",
+          city: user.city || "",
+        }));
+      } catch (error) {
+        console.log("User data error:", error);
+      }
+    }
+  }, []);
 
-  const total = subtotal + deliveryFee;
+  // ==============================
+  // LOAD CART
+  // ==============================
+  const loadCart = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-  const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
+      const response = await api.get("/cart");
+
+      const items = response.data.items || [];
+
+      setCart(items);
+
+      setSubtotal(Number(response.data.subtotal || 0));
+      setDeliveryFee(Number(response.data.delivery_fee || 0));
+      setTotal(Number(response.data.total || 0));
+
+      if (items.length === 0) {
+        navigate("/cart");
+      }
+    } catch (error) {
+      console.error("Checkout cart error:", error);
+
+      if (error.response?.status === 401) {
+        localStorage.removeItem("customer_token");
+        localStorage.removeItem("customer_user");
+
+        navigate("/login");
+        return;
+      }
+
+      setError("Unable to load your cart.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const placeOrder = (e) => {
+  // ==============================
+  // HANDLE INPUT CHANGE
+  // ==============================
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // ==============================
+  // FOOD HELPERS
+  // ==============================
+  const getFoodName = (item) => {
+    return item.food?.name || "Food Item";
+  };
+
+  const getFoodImage = (item) => {
+    return (
+      item.food?.image ||
+      "https://via.placeholder.com/100"
+    );
+  };
+
+  const getFoodPrice = (item) => {
+    return Number(item.food?.price || 0);
+  };
+
+  const getItemTotal = (item) => {
+    return getFoodPrice(item) * Number(item.quantity || 0);
+  };
+
+  // ==============================
+  // PLACE ORDER
+  // ==============================
+  const handlePlaceOrder = async (e) => {
     e.preventDefault();
 
-    if (
-      !form.name ||
-      !form.phone ||
-      !form.address ||
-      !form.city
-    ) {
-      alert(
-        "Please fill all required delivery details."
-      );
+    setError("");
+
+    // Validation
+    if (!form.customer_name.trim()) {
+      setError("Please enter your name.");
       return;
     }
 
-    const order = {
-      id: "FE" + Date.now(),
-      customer: form.name,
-      phone: form.phone,
-      address: form.address,
-      city: form.city,
-      notes: form.notes,
-      payment,
-      items: cart,
-      subtotal,
-      deliveryFee,
-      total,
-      status: "Pending",
-      createdAt: new Date().toISOString(),
-    };
+    if (!form.phone.trim()) {
+      setError("Please enter your phone number.");
+      return;
+    }
 
-    const oldOrders = JSON.parse(
-      localStorage.getItem("customer_orders") || "[]"
-    );
+    if (!form.address.trim()) {
+      setError("Please enter your delivery address.");
+      return;
+    }
 
-    oldOrders.push(order);
+    if (!form.city.trim()) {
+      setError("Please enter your city.");
+      return;
+    }
 
-    localStorage.setItem(
-      "customer_orders",
-      JSON.stringify(oldOrders)
-    );
+    try {
+      setPlacingOrder(true);
 
-    localStorage.removeItem("cart");
+      // ==============================
+      // SEND ORDER TO LARAVEL API
+      // ==============================
+      const response = await api.post("/orders", {
+        customer_name: form.customer_name,
+        phone: form.phone,
+        address: form.address,
+        city: form.city,
 
-    alert("🎉 Order placed successfully!");
+        // IMPORTANT:
+        // Convert latitude and longitude to numbers.
+        // If empty, send null.
+        latitude: form.latitude
+          ? Number(form.latitude)
+          : null,
 
-    navigate("/orders");
+        longitude: form.longitude
+          ? Number(form.longitude)
+          : null,
+
+        payment_method: form.payment_method,
+
+        notes: form.notes.trim()
+          ? form.notes
+          : null,
+      });
+
+      console.log("Order placed:", response.data);
+
+      // Success message
+      alert("🎉 Order placed successfully!");
+
+      // Go to My Orders
+      navigate("/orders");
+
+    } catch (error) {
+  console.error("================================");
+  console.error("PLACE ORDER ERROR");
+  console.error("STATUS:", error.response?.status);
+  console.error("DATA:", error.response?.data);
+  console.error("MESSAGE:", error.message);
+  console.error("================================");
+
+  if (error.response?.status === 401) {
+    localStorage.removeItem("customer_token");
+    localStorage.removeItem("customer_user");
+
+    navigate("/login");
+    return;
+  }
+
+  if (error.response?.status === 422) {
+    const validationErrors = error.response?.data?.errors;
+
+    if (validationErrors) {
+      const firstError = Object.values(validationErrors)[0]?.[0];
+
+      setError(
+        firstError || "Please check your delivery details."
+      );
+    } else {
+      setError(
+        error.response?.data?.message ||
+          "Please check your delivery details."
+      );
+    }
+
+    return;
+  }
+
+  if (error.response?.data?.error) {
+    setError(error.response.data.error);
+    return;
+  }
+
+  if (error.response?.data?.message) {
+    setError(error.response.data.message);
+    return;
+  }
+
+  setError(
+    "Failed to place order. Please try again."
+  );
+}
+
+
   };
 
-  if (cart.length === 0) {
+  // ==============================
+  // LOADING
+  // ==============================
+  if (loading) {
     return (
-      <div
-        style={{
-          minHeight: "75vh",
-          background: "#fffaf2",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <div className="text-center">
-          <div style={{ fontSize: "80px" }}>
-            🛒
-          </div>
-
-          <h2 className="fw-bold">
-            Your cart is empty
-          </h2>
-
-          <p className="text-muted">
-            Add some delicious food before checkout.
-          </p>
-
-          <Link
-            to="/restaurants"
-            className="btn btn-warning px-4 py-3 fw-bold"
-          >
-            🍔 Browse Restaurants
-          </Link>
-        </div>
+      <div className="container py-5 text-center">
+        <h4>Loading checkout...</h4>
       </div>
     );
   }
 
+  // ==============================
+  // CHECKOUT PAGE
+  // ==============================
   return (
-    <div
-      style={{
-        background: "#fffaf2",
-        minHeight: "80vh",
-        padding: "50px 0",
-      }}
-    >
-      <div className="container">
+    <div className="container py-5">
 
-        {/* HEADER */}
+      {/* PAGE HEADER */}
+      <div className="mb-4">
+        <h2 className="fw-bold">
+          Checkout
+        </h2>
 
-        <div className="mb-4">
-          <small
-            style={{
-              color: "#ff9f1c",
-              fontWeight: "800",
-              letterSpacing: "2px",
-            }}
-          >
-            FOOD EXPRESS
-          </small>
+        <p className="text-muted">
+          Complete your delivery details and place your order.
+        </p>
+      </div>
 
-          <h1 className="fw-bold">
-            Checkout
-          </h1>
-
-          <p className="text-muted">
-            Complete your delivery details and place your
-            order.
-          </p>
+      {/* ERROR MESSAGE */}
+      {error && (
+        <div className="alert alert-danger">
+          {error}
         </div>
+      )}
 
-        <form onSubmit={placeOrder}>
+      <div className="row g-4">
 
-          <div className="row g-4">
+        {/* =====================================
+            LEFT SIDE - DELIVERY FORM
+        ===================================== */}
+        <div className="col-lg-7">
 
-            {/* LEFT SIDE */}
+          <div className="card shadow-sm border-0">
 
-            <div className="col-lg-7">
+            <div className="card-body p-4">
 
-              {/* DELIVERY DETAILS */}
+              <h4 className="fw-bold mb-4">
+                📦 Delivery Information
+              </h4>
 
-              <div
-                className="card border-0 shadow-sm mb-4"
-                style={{
-                  borderRadius: "20px",
-                }}
-              >
-                <div className="card-body p-4">
+              <form onSubmit={handlePlaceOrder}>
 
-                  <h4 className="fw-bold mb-4">
-                    📍 Delivery Details
-                  </h4>
+                {/* CUSTOMER NAME */}
+                <div className="mb-3">
 
-                  <div className="row g-3">
+                  <label className="form-label fw-semibold">
+                    Customer Name
+                  </label>
 
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">
-                        Full Name *
-                      </label>
-
-                      <input
-                        type="text"
-                        name="name"
-                        value={form.name}
-                        onChange={handleChange}
-                        className="form-control form-control-lg"
-                        placeholder="Your name"
-                        required
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">
-                        Phone Number *
-                      </label>
-
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={form.phone}
-                        onChange={handleChange}
-                        className="form-control form-control-lg"
-                        placeholder="07XXXXXXXX"
-                        required
-                      />
-                    </div>
-
-                    <div className="col-12">
-                      <label className="form-label fw-semibold">
-                        Delivery Address *
-                      </label>
-
-                      <textarea
-                        name="address"
-                        value={form.address}
-                        onChange={handleChange}
-                        className="form-control"
-                        rows="3"
-                        placeholder="House number, street, area..."
-                        required
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">
-                        City *
-                      </label>
-
-                      <input
-                        type="text"
-                        name="city"
-                        value={form.city}
-                        onChange={handleChange}
-                        className="form-control form-control-lg"
-                        placeholder="Colombo"
-                        required
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">
-                        Delivery Instructions
-                      </label>
-
-                      <input
-                        type="text"
-                        name="notes"
-                        value={form.notes}
-                        onChange={handleChange}
-                        className="form-control form-control-lg"
-                        placeholder="Optional"
-                      />
-                    </div>
-
-                  </div>
-                </div>
-              </div>
-
-              {/* MAP */}
-
-              <div
-                className="card border-0 shadow-sm mb-4"
-                style={{
-                  borderRadius: "20px",
-                }}
-              >
-                <div className="card-body p-4">
-
-                  <h4 className="fw-bold mb-3">
-                    🗺️ Delivery Location
-                  </h4>
-
-                  <div
-                    style={{
-                      height: "220px",
-                      borderRadius: "15px",
-                      background:
-                        "linear-gradient(135deg,#dff3e6,#c8e6ff)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexDirection: "column",
-                      color: "#555",
-                    }}
-                  >
-                    <div style={{ fontSize: "50px" }}>
-                      📍
-                    </div>
-
-                    <strong>
-                      Your delivery location
-                    </strong>
-
-                    <small>
-                      Map integration can be added next
-                    </small>
-                  </div>
+                  <input
+                    type="text"
+                    name="customer_name"
+                    value={form.customer_name}
+                    onChange={handleChange}
+                    className="form-control"
+                    placeholder="Enter your name"
+                  />
 
                 </div>
-              </div>
 
-              {/* PAYMENT */}
+                {/* PHONE */}
+                <div className="mb-3">
 
-              <div
-                className="card border-0 shadow-sm"
-                style={{
-                  borderRadius: "20px",
-                }}
-              >
-                <div className="card-body p-4">
+                  <label className="form-label fw-semibold">
+                    Phone Number
+                  </label>
 
-                  <h4 className="fw-bold mb-4">
-                    💳 Payment Method
-                  </h4>
-
-                  <div className="row g-3">
-
-                    <div className="col-md-6">
-
-                      <label
-                        className="w-100"
-                        style={{
-                          cursor: "pointer",
-                        }}
-                      >
-                        <div
-                          className={`border rounded-3 p-3 ${
-                            payment === "cash"
-                              ? "border-warning bg-warning-subtle"
-                              : ""
-                          }`}
-                        >
-
-                          <input
-                            type="radio"
-                            name="payment"
-                            value="cash"
-                            checked={
-                              payment === "cash"
-                            }
-                            onChange={(e) =>
-                              setPayment(
-                                e.target.value
-                              )
-                            }
-                            className="me-2"
-                          />
-
-                          💵 Cash on Delivery
-
-                        </div>
-                      </label>
-
-                    </div>
-
-                    <div className="col-md-6">
-
-                      <label
-                        className="w-100"
-                        style={{
-                          cursor: "pointer",
-                        }}
-                      >
-                        <div
-                          className={`border rounded-3 p-3 ${
-                            payment === "card"
-                              ? "border-warning bg-warning-subtle"
-                              : ""
-                          }`}
-                        >
-
-                          <input
-                            type="radio"
-                            name="payment"
-                            value="card"
-                            checked={
-                              payment === "card"
-                            }
-                            onChange={(e) =>
-                              setPayment(
-                                e.target.value
-                              )
-                            }
-                            className="me-2"
-                          />
-
-                          💳 Card Payment
-
-                        </div>
-                      </label>
-
-                    </div>
-
-                  </div>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={form.phone}
+                    onChange={handleChange}
+                    className="form-control"
+                    placeholder="07XXXXXXXX"
+                  />
 
                 </div>
-              </div>
 
-            </div>
+                {/* ADDRESS */}
+                <div className="mb-3">
 
-            {/* RIGHT SIDE */}
+                  <label className="form-label fw-semibold">
+                    Delivery Address
+                  </label>
 
-            <div className="col-lg-5">
+                  <textarea
+                    name="address"
+                    value={form.address}
+                    onChange={handleChange}
+                    className="form-control"
+                    rows="3"
+                    placeholder="Enter your delivery address"
+                  />
 
-              <div
-                className="card border-0 shadow-sm"
-                style={{
-                  borderRadius: "20px",
-                  position: "sticky",
-                  top: "100px",
-                }}
-              >
+                </div>
 
-                <div className="card-body p-4">
+                {/* CITY */}
+                <div className="mb-3">
 
-                  <h4 className="fw-bold mb-4">
-                    🧾 Your Order
-                  </h4>
+                  <label className="form-label fw-semibold">
+                    City
+                  </label>
 
-                  {cart.map((item, index) => (
+                  <input
+                    type="text"
+                    name="city"
+                    value={form.city}
+                    onChange={handleChange}
+                    className="form-control"
+                    placeholder="Enter your city"
+                  />
 
-                    <div
-                      key={index}
-                      className="d-flex justify-content-between align-items-center mb-3"
-                    >
+                </div>
 
-                      <div className="d-flex align-items-center gap-3">
+                {/* =====================================
+                    DELIVERY LOCATION
+                ===================================== */}
+                <div className="card bg-light border-0 mb-4">
 
-                        <div
-                          style={{
-                            width: "48px",
-                            height: "48px",
-                            borderRadius: "10px",
-                            background: "#fff1d6",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "24px",
-                          }}
-                        >
-                          🍔
-                        </div>
+                  <div className="card-body">
 
-                        <div>
-                          <strong>
-                            {item.name ||
-                              "Food Item"}
-                          </strong>
+                    <h6 className="fw-bold">
+                      📍 Delivery Location
+                    </h6>
 
-                          <small className="d-block text-muted">
-                            x
-                            {getQuantity(item)}
-                          </small>
-                        </div>
+                    <p className="small text-muted mb-3">
+                      You can enter your map coordinates.
+                    </p>
+
+                    <div className="row">
+
+                      {/* LATITUDE */}
+                      <div className="col-md-6">
+
+                        <label className="form-label">
+                          Latitude
+                        </label>
+
+                        <input
+                          type="number"
+                          step="any"
+                          name="latitude"
+                          value={form.latitude}
+                          onChange={handleChange}
+                          className="form-control"
+                          placeholder="Latitude"
+                        />
 
                       </div>
 
-                      <strong>
-                        $
-                        {(
-                          getPrice(item) *
-                          getQuantity(item)
-                        ).toFixed(2)}
-                      </strong>
+                      {/* LONGITUDE */}
+                      <div className="col-md-6">
+
+                        <label className="form-label">
+                          Longitude
+                        </label>
+
+                        <input
+                          type="number"
+                          step="any"
+                          name="longitude"
+                          value={form.longitude}
+                          onChange={handleChange}
+                          className="form-control"
+                          placeholder="Longitude"
+                        />
+
+                      </div>
 
                     </div>
 
-                  ))}
-
-                  <hr />
-
-                  <div className="d-flex justify-content-between mb-3">
-                    <span className="text-muted">
-                      Subtotal
-                    </span>
-
-                    <strong>
-                      ${subtotal.toFixed(2)}
-                    </strong>
                   </div>
 
-                  <div className="d-flex justify-content-between mb-3">
-                    <span className="text-muted">
-                      Delivery Fee
-                    </span>
+                </div>
 
-                    <strong>
-                      ${deliveryFee.toFixed(2)}
-                    </strong>
-                  </div>
+                {/* =====================================
+                    PAYMENT METHOD
+                ===================================== */}
+                <h5 className="fw-bold mb-3">
+                  💳 Payment Method
+                </h5>
 
-                  <hr />
+                <div className="mb-4">
 
-                  <div className="d-flex justify-content-between mb-4">
+                  {/* CASH */}
+                  <div className="form-check border rounded p-3 mb-2">
 
-                    <strong
-                      style={{
-                        fontSize: "20px",
-                      }}
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="payment_method"
+                      value="cash_on_delivery"
+                      checked={
+                        form.payment_method ===
+                        "cash_on_delivery"
+                      }
+                      onChange={handleChange}
+                      id="cash"
+                    />
+
+                    <label
+                      className="form-check-label fw-semibold"
+                      htmlFor="cash"
                     >
-                      Total
-                    </strong>
-
-                    <strong
-                      style={{
-                        color: "#ff9f1c",
-                        fontSize: "25px",
-                      }}
-                    >
-                      ${total.toFixed(2)}
-                    </strong>
+                      💵 Cash on Delivery
+                    </label>
 
                   </div>
 
-                  <button
-                    type="submit"
-                    className="btn btn-warning w-100 py-3 fw-bold"
-                    style={{
-                      borderRadius: "12px",
-                      fontSize: "17px",
-                    }}
-                  >
-                    🎉 Place Order
-                  </button>
+                  {/* CARD */}
+                  <div className="form-check border rounded p-3">
 
-                  <Link
-                    to="/cart"
-                    className="btn btn-outline-dark w-100 py-3 mt-2 fw-bold"
-                    style={{
-                      borderRadius: "12px",
-                    }}
-                  >
-                    ← Back to Cart
-                  </Link>
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="payment_method"
+                      value="card"
+                      checked={
+                        form.payment_method === "card"
+                      }
+                      onChange={handleChange}
+                      id="card"
+                    />
 
-                  <div className="text-center mt-3">
+                    <label
+                      className="form-check-label fw-semibold"
+                      htmlFor="card"
+                    >
+                      💳 Card Payment
+                    </label>
+
+                  </div>
+
+                </div>
+
+                {/* =====================================
+                    ORDER NOTES
+                ===================================== */}
+                <div className="mb-4">
+
+                  <label className="form-label fw-semibold">
+                    Order Notes
+                  </label>
+
+                  <textarea
+                    name="notes"
+                    value={form.notes}
+                    onChange={handleChange}
+                    className="form-control"
+                    rows="3"
+                    placeholder="Any special instructions?"
+                  />
+
+                </div>
+
+                {/* =====================================
+                    PLACE ORDER BUTTON
+                ===================================== */}
+                <button
+                  type="submit"
+                  className="btn btn-dark btn-lg w-100"
+                  disabled={placingOrder}
+                >
+                  {placingOrder
+                    ? "Placing Order..."
+                    : `Place Order - $${total.toFixed(2)}`}
+                </button>
+
+              </form>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* =====================================
+            RIGHT SIDE - ORDER SUMMARY
+        ===================================== */}
+        <div className="col-lg-5">
+
+          <div className="card shadow-sm border-0">
+
+            <div className="card-body p-4">
+
+              <h4 className="fw-bold mb-4">
+                🛒 Your Order
+              </h4>
+
+              {/* CART ITEMS */}
+              {cart.map((item) => (
+
+                <div
+                  key={item.id}
+                  className="d-flex align-items-center mb-3 pb-3 border-bottom"
+                >
+
+                  {/* FOOD IMAGE */}
+                  <img
+                    src={getFoodImage(item)}
+                    alt={getFoodName(item)}
+                    style={{
+                      width: "70px",
+                      height: "70px",
+                      objectFit: "cover",
+                      borderRadius: "10px",
+                    }}
+                  />
+
+                  {/* FOOD DETAILS */}
+                  <div className="ms-3 flex-grow-1">
+
+                    <h6 className="mb-1 fw-bold">
+                      {getFoodName(item)}
+                    </h6>
+
                     <small className="text-muted">
-                      🔒 Your order information is secure
+                      ${getFoodPrice(item).toFixed(2)} ×{" "}
+                      {item.quantity}
                     </small>
+
                   </div>
+
+                  {/* ITEM TOTAL */}
+                  <strong>
+                    ${getItemTotal(item).toFixed(2)}
+                  </strong>
+
+                </div>
+
+              ))}
+
+              {/* TOTALS */}
+              <div className="mt-4">
+
+                <div className="d-flex justify-content-between mb-2">
+                  <span>Subtotal</span>
+
+                  <span>
+                    ${subtotal.toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="d-flex justify-content-between mb-2">
+                  <span>Delivery Fee</span>
+
+                  <span>
+                    ${deliveryFee.toFixed(2)}
+                  </span>
+                </div>
+
+                <hr />
+
+                <div className="d-flex justify-content-between">
+
+                  <h5 className="fw-bold">
+                    Total
+                  </h5>
+
+                  <h5 className="fw-bold">
+                    ${total.toFixed(2)}
+                  </h5>
 
                 </div>
 
@@ -568,11 +622,18 @@ function Checkout() {
 
           </div>
 
-        </form>
+          {/* BACK TO CART */}
+          <button
+            className="btn btn-outline-secondary w-100 mt-3"
+            onClick={() => navigate("/cart")}
+          >
+            ← Back to Cart
+          </button>
+
+        </div>
 
       </div>
+
     </div>
   );
 }
-
-export default Checkout;
